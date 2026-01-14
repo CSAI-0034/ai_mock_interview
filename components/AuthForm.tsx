@@ -19,9 +19,9 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import AuthFormField from './AuthFormField'
 import { useRouter } from 'next/navigation'
-import { createUserWithEmailAndPassword } from 'firebase/auth'
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '@/firebase/client'
-import { signUp } from '@/lib/actions/auth.action'
+import { signIn, signUp } from '@/lib/actions/auth.action'
 
 type FormType = 'sign-in' | 'sign-up'
 
@@ -56,14 +56,22 @@ const AuthForm = ({ type }: { type: FormType }) => {
           email,
           password
         });
-      if(!result?.success){
-        toast.error(result.message);
-        return;
-      } 
+        if(!result?.success){
+          toast.error(result.message);
+          return;
+        } 
         toast.success('Account created successfully! Please sign in.')
         router.push('/sign-in');
       }
       else{
+        const { email, password } = values;
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const idToken = await userCredential.user.getIdToken();
+        if(!idToken){
+          toast.error('Sign In Failed.');
+          return;
+        }
+        await signIn({ email, idToken }); 
         toast.success('Signed in successfully!')
         router.push('/')
       }
