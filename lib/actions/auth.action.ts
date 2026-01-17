@@ -30,22 +30,31 @@ export async function signUp(params: SignUpParams){
     }
 }
 
-export async function signIn(params: SignInParams) {
-    const { email, idToken } = params;
-    try {
-        const userRecord = await auth.getUserByEmail(email);
-        if(!userRecord){
-            return { success: false, message: "User not found. Please sign up." };
-        }
-        await setSessionCookie(idToken);
-    } catch (error: any) {
-        console.error("Error signing in:", error);
-        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-            return { success: false, message: "Invalid email or password." };
-        }
-        return { success: false, message: "Failed to sign in." };
+export async function signIn(params: { idToken: string }) {
+  const { idToken } = params;
+
+  try {
+    const decodedToken = await auth.verifyIdToken(idToken);
+
+    await auth.getUser(decodedToken.uid);
+
+    await setSessionCookie(idToken);
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error signing in:", error);
+
+    if (error.code === "auth/user-not-found") {
+      return {
+        success: false,
+        message: "No user found. Please sign up first.",
+      };
     }
+
+    return { success: false, message: "Failed to sign in." };
+  }
 }
+
 
 export async function setSessionCookie(idToken: string) {
     const cookieStore = await cookies();
